@@ -1,8 +1,8 @@
-import random
-import argparse
-import time
 from tests.loadtest_pure.poller_client import poller_client
-from multiprocessing.pool import ThreadPool
+import argparse
+import random
+import gevent
+import time
 
 def random_in(a, b):
     return a + random.random() * (b - a)
@@ -15,28 +15,27 @@ def user_sessions_test(
     initialization_delay=(0,0.1),
     max_delays=[0.0, 0.1, 0.15],
 ):
-    time.sleep(random_in(*initialization_delay))
-    pool = ThreadPool(processes=n_session)
-    results = []
+    tasks : List[gevent.Greenlet] = []
+    host = "http://127.0.0.1:8000"
+    gevent.sleep(random_in(*initialization_delay))
+
 
     for n in range(n_session):
         m_delay = random_in(0, max_delays[n])
-        results.append(
-            pool.apply_async(
+        tasks.append(
+            gevent.spawn(
                 poller_client,
-                args=(
-                    "http://127.0.0.1:8000/long-polling",
-                    total_messages,
-                    user,
-                    True,
-                    (0, m_delay),
-                ),
+                host + "/long-polling",
+                total_messages,
+                user,
+                True,
+                (0, m_delay),
             )
         )
 
     all_ok = True
-    for n,res in enumerate(results):
-        r = res.get()
+    for n,t in enumerate(tasks):
+        r = t.get()
         if r == True:
             print(f"\nsession-{n} user-{user} .. ok")
         else:

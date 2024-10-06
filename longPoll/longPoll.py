@@ -9,10 +9,14 @@ T = TypeVar("T")
 UserType = TypeVar("User", bound=Hashable)
 SessoinType = TypeVar("Session", bound=Hashable)
 
-#TODO: add logging insted of this shit
-DEBUG = True
+# TODO: add logging insted of this shit
+DEBUG = False
+
+
 def debug_msg(txt):
-    if DEBUG: print(f"{txt}")
+    if DEBUG:
+        print(f"{txt}")
+
 
 async def with_delay(coroutine, delay):
     await asyncio.sleep(delay)
@@ -46,8 +50,7 @@ class UserState(Enum):
 
 
 EPCILON_DELAY = 0.0001  # 0.1 ms
-PENDING_DELAY_BIG = 3  # first connection to connection ready delay
-
+PENDING_DELAY_BIG = 2.5  # first connection to connection ready delay
 
 
 class UserData(BaseModel):
@@ -116,7 +119,7 @@ class UserData(BaseModel):
 
 async def send_new_msg(userData):
     if userData.user_state is not UserState.sending:
-        debug_msg('sending')
+        debug_msg("sending")
         # from sending to pending again
         userData.user_state = UserState.sending
         userData.consume_message = userData.message_queue.popleft()
@@ -129,7 +132,10 @@ async def send_new_msg(userData):
         await asyncio.sleep(EPCILON_DELAY)
         userData.msg_ready_event.clear()
         userData.user_state = UserState.pending
-        if userData.pending_clients and userData.pending_clients == userData.last_message_clients:
+        if (
+            userData.pending_clients
+            and userData.pending_clients == userData.last_message_clients
+        ):
             userData.end_the_pending_after(EPCILON_DELAY)
         else:
             userData.end_the_pending_after(PENDING_DELAY_BIG)
@@ -137,17 +143,18 @@ async def send_new_msg(userData):
     else:
         debug_msg(f"send called but state is {userData.user_state}")
 
+
 async def pending_end(userData: UserData):
     userData.pending_end_time = None
     if userData.user_state == UserState.pending:
         # end the connection pending
         # is there any ready message?
-        if len(userData.pending_clients)>0:
+        if len(userData.pending_clients) > 0:
             if len(userData.message_queue) > 0:
-                #debug_msg(f"1>3: time = {time.time():.3f}")
+                # debug_msg(f"1>3: time = {time.time():.3f}")
                 userData.send_task = asyncio.create_task(send_new_msg(userData))
             else:
-                #debug_msg(f"1>2: time = {time.time():.3f}")
+                # debug_msg(f"1>2: time = {time.time():.3f}")
                 userData.user_state = UserState.waiting_for_message
         else:
             debug_msg("pending end eached with no connection!!")
@@ -162,16 +169,19 @@ class LongPollable:
         self.is_batch_mode = is_batch_mode
         self.tasks = []
 
-    def load_user_data(
-        self,
-        user: UserType,
-    ) -> UserData:
+
+
+    def load_user_data(self, user: UserType) -> UserData:
         if user not in self.waiting_users:
             userData = UserData(user_state=UserState.pending)
             self.waiting_users[user] = userData
             return userData
         else:
             return self.waiting_users[user]
+
+    def clear_queue(self, user: UserType):
+        if user in self.waiting_users:
+            del self.waiting_users[user]
 
     async def wait_for_message(
         self, user: UserType, session: SessoinType, timeout: float

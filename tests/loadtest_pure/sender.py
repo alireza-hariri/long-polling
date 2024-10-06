@@ -1,6 +1,7 @@
-import requests
+from geventhttpclient import Session
 import argparse
 import random
+import gevent
 import time
 
 
@@ -14,11 +15,14 @@ def sender(
     N: int,
     initialization_delay=(0, 0.5),
 ):
-    time.sleep(random_in(*initialization_delay))
+    gevent.sleep(random_in(*initialization_delay))
+    s = Session()
     t0 = time.time()
+    host = "http://127.0.0.1:8000"
+
     for n in range(N):
-        requests.get(
-            url="http://127.0.0.1:8000/send-hello",
+        s.get(
+            url=host + "/send-hello",
             params={
                 "user_id": user,
                 "seq_id": n + 1,
@@ -26,8 +30,7 @@ def sender(
         )
         t = time.time()
         if (t - t0) < n / req_per_sec:
-            time.sleep(n / req_per_sec - (t - t0))
-
+            gevent.sleep(n / req_per_sec - (t - t0))
 
 
 if __name__ == "__main__":

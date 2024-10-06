@@ -1,9 +1,10 @@
+from geventhttpclient import Session
+import gevent
 import argparse
 import requests
 import random
 import uuid
 import time
-
 
 def random_in(a, b):
     return a + random.random() * (b - a)
@@ -24,12 +25,15 @@ def poller_client(
     last_id = 0
     all_ok = True
     # a random number as session (consistent for all requests of this client)
-    session = uuid.uuid4().hex[:10]
+    session_id = uuid.uuid4().hex[:10]
+    s = Session() # geventhttpclient session
+
+
     for _ in range(total_messages):
         if random.random() > no_delay_prob:
-            time.sleep(random_in(*delay_range))
+            gevent.sleep(random_in(*delay_range))
             
-        resp = requests.get(endpoint, params={"session_id": session, "user_id": user})
+        resp = s.get(endpoint, params={"session_id": session_id, "user_id": user})
         if resp.status_code == 200:
             data = resp.json()
             if check_first_id or last_id:

@@ -30,11 +30,18 @@ async def send_hello(user_id: int,seq_id:int):
     )
     return {"sent": send_ok}
 
+@app.get("/clear-queue")
+async def send_hello(user_id: int):
+
+    # type checked message !
+    lp.clear_queue(user=user_id)
+    return {"clear": True}
+
 
 @app.get("/long-polling")
 async def long_polling(session_id: str, user_id: int):
     # write your login logic here
-    # ...
+    ...
     #
     try:
         # waiting 10 seconds for new messages sent to this user
