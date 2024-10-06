@@ -9,28 +9,45 @@ def random_in(a, b):
     return a + random.random() * (b - a)
 
 
-def main(endpoint: str, total_messages: int,user:int, delay_range=(0, 0.05)):
+def poller_client(
+    endpoint: str,
+    total_messages: int,
+    user: int,
+    check_first_id = True,
+    delay_range=(0, 0.05),
+    no_delay_prob=0.2,
+) -> bool:
     """
-    continuslly polls the server
-    there is a random delay between each pollings
+    continually polls the server
+    there is a random delay between each polling
     """
     last_id = 0
-    session = uuid.uuid4().hex[:10]  # just a random number which is consistent all requests of this client
-    while True:
+    all_ok = True
+    # a random number as session (consistent for all requests of this client)
+    session = uuid.uuid4().hex[:10]
+    for _ in range(total_messages):
+        if random.random() > no_delay_prob:
+            time.sleep(random_in(*delay_range))
+            
         resp = requests.get(endpoint, params={"session_id": session, "user_id": user})
         if resp.status_code == 200:
             data = resp.json()
-            if data["message"] == last_id + 1:
-                print(".", end="", flush=True)
-            else:
-                print(f"bad seq_id last={last_id} message={data['message']}")
-            last_id = data["message"]
+            if check_first_id or last_id:
+                if data["message"]["id"] == last_id + 1:
+                    print(".", end="", flush=True)
+                else:
+                    all_ok = False
+                    print(f"bad seq_id last={last_id} message={data['message']}")
+            last_id = data["message"]['id']
+            assert data["message"]['user'] == user
         elif resp.status_code == 204:
             print("no content!")
         else:
+            all_ok = False
             print(resp)
-        if random.random() > 0.2:
-            time.sleep(random_in(*delay_range))
+
+    
+    return all_ok
 
 
 if __name__ == "__main__":
@@ -56,11 +73,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "-u",
         "--user",
+        type=int,
         help="username or user_id",
     )
 
     args = parser.parse_args()
-    main(
+    poller_client(
         endpoint=args.endpoint,
         total_messages=args.total_messages,
         user=args.user,
