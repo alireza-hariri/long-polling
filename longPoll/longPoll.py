@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import TypeVar, Type, Generic, Any, Hashable, List, Dict, Set
 from enum import Enum, auto
 
+
 T = TypeVar("T")
 UserType = TypeVar("User", bound=Hashable)
 SessoinType = TypeVar("Session", bound=Hashable)

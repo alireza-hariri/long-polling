@@ -1,4 +1,5 @@
 from geventhttpclient import Session
+import requests
 import argparse
 import random
 import gevent
@@ -15,13 +16,13 @@ def sender(
     N: int,
     initialization_delay=(0, 0.5),
 ):
-    gevent.sleep(random_in(*initialization_delay))
-    s = Session()
+    time.sleep(random_in(*initialization_delay))
+    # s = Session()
     t0 = time.time()
     host = "http://127.0.0.1:8000"
 
     for n in range(N):
-        s.get(
+        requests.get(
             url=host + "/send-hello",
             params={
                 "user_id": user,
